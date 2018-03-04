@@ -33,6 +33,10 @@
 <br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
 {%- endmacro -%}
 
+{%- macro bullet(icon, text) -%}
+<li><span class="fa-li"><i class="fas fa-{{ icon }}"></i></span> {{ text }}</li>
+{%- endmacro -%}
+
 <!DOCTYPE html>
 <html>
     <head>
@@ -53,19 +57,19 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href id="btn-accounts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ account_label(default) }}</a>
                             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenu2">
-                                {% for account in accounts %}
+                                {%- for account in accounts %}
                                 <button class="dropdown-item" type="button"{% if account.closed %} disabled{% endif %}>
                                     {{ account_item(account) }}
                                 </button>
-                                {% endfor %}
-                                {% if pots %}
+                                {%- endfor %}
+                                {%- if pots %}
                                 <div class="dropdown-divider"></div>
-                                {% for pot in pots %}
+                                {%- for pot in pots %}
                                 <button class="dropdown-item" type="button"{% if pot.deleted %} disabled{% endif %}>
                                     {{ pot_item(pot) }}
                                 </button>
-                                {% endfor %}
-                                {% endif %}
+                                {%- endfor %}
+                                {%- endif %}
                                 <div class="dropdown-divider"></div>
                                 <a href="/logout" class="dropdown-item"><i class="fa-fw fas fa-sign-out-alt"></i> Log out</a>
                             </div>
@@ -75,83 +79,60 @@
             </div>
         </nav>
         <div class="container py-3">
-            {% set heading = namespace(month=none, date=none) %}
-            {% for item in items | reverse %}
-            {% if not heading.month == (item.created.month, item.created.year) %}
-            {% set heading.month = (item.created.month, item.created.year) %}
+            {%- set heading = namespace(month=none, date=none) %}
+            {%- for item in items | reverse %}
+            {%- if not heading.month == (item.created.month, item.created.year) %}
+            {%- set heading.month = (item.created.month, item.created.year) %}
             <h2 class="mt-2">{{ item.created.strftime("%B %Y") }}</h2>
-            {% endif %}
-            {% if not heading.date == item.created.date() %}
-            {% set heading.date = item.created.date() %}
+            {%- endif %}
+            {%- if not heading.date == item.created.date() %}
+            {%- set heading.date = item.created.date() %}
             <h3 class="mt-2">{{ item.created.strftime("%d/%m/%y") }}</h3>
-            {% endif %}
-            {% if item.is_load or item.amount > 0 %}
-            {% set colour = "success" %}
-            {% elif item.amount == 0 %}
-            {% set colour = "secondary" %}
-            {% elif item.decline_reason %}
-            {% set colour = "danger" %}
-            {% elif item.merchant and item.merchant.atm %}
-            {% set colour = "info" %}
-            {% else %}
-            {% set colour = "primary" %}
-            {% endif %}
+            {%- endif %}
+            {%- if item.is_load or item.amount > 0 %}
+            {%- set colour = "success" %}
+            {%- elif item.amount == 0 %}
+            {%- set colour = "secondary" %}
+            {%- elif item.decline_reason %}
+            {%- set colour = "danger" %}
+            {%- elif item.merchant and item.merchant.atm %}
+            {%- set colour = "info" %}
+            {%- else %}
+            {%- set colour = "primary" %}
+            {%- endif %}
             <div class="card text-white bg-{{ colour }} mt-1"{% if item.id in dupes %} style="opacity: 0.5"{% endif %}>
                 <div class="card-body p-1">
                     <h4 class="card-title"></h4>
-                    {% if item.merchant and item.merchant.logo %}
+                    {%- if item.merchant and item.merchant.logo %}
                     <img src="{{ item.merchant.logo }}" class="float-right mr-3" style="border: 1px solid rgba(0, 0, 0, .125); max-height: 4.5rem">
-                    {% endif %}
+                    {%- endif %}
                     <ul class="fa-ul">
-                        <li>
-                            <span class="fa-li"><i class="fas fa-clock"></i></span>
-                            {{ item.created.strftime("%H:%M:%S") }}
-                        </li>
-                        <li>
-                            <span class="fa-li"><i class="fas fa-pound-sign"></i></span>
-                            {{ currency(item.amount) }}
-                            {% if item.local_currency and not item.currency == item.local_currency %}
-                            ({{ currency(item.local_amount, false) }} {{ item.local_currency }})
-                            {% endif %}
-                        </li>
-                        {% if item.merchant %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-{% if item.merchant.online %}globe{% else %}user-secret{% endif %}"></i></span>
-                            {{ item.merchant.name }}
-                        </li>
-                        {% if item.merchant.address and not item.merchant.online %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-map-marker-alt"></i></span>
-                            {{ item.merchant.address.formatted }}
-                        </li>
-                        {% endif %}
-                        {% elif item.counterparty %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-user"></i></span>
-                            {{ item.counterparty.name }}
-                        </li>
-                        {% elif item.is_load %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-plus-square"></i></span>
-                            Top-up
-                        </li>
-                        {% endif %}
-                        {% if item.decline_reason %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-minus-circle"></i></span>
-                            {{ item.decline_reason }}
-                        </li>
-                        {% endif %}
-                        {% if item.notes %}
-                        <li>
-                            <span class="fa-li"><i class="fas fa-pencil-alt"></i></span>
-                            {{ item.notes }}
-                        </li>
-                        {% endif %}
+                        {{ bullet("clock", item.created.strftime("%H:%M:%S")) }}
+                        {%- set text = currency(item.amount) %}
+                        {%- if item.local_currency and not item.currency == item.local_currency %}
+                        {%- set text %}{{ text }} ({{ currency(item.local_amount, false) }} {{ item.local_currency }}){% endset %}
+                        {%- endif %}
+                        {{ bullet("pound-sign", text) }}
+                        {%- if item.merchant %}
+                        {{ bullet("globe" if item.merchant.online else "user-secret", item.merchant.name) }}
+                        {%- if item.merchant.address and not item.merchant.online %}
+                        {{ bullet("map-marker-alt", item.merchant.address.formatted) }}
+                        {%- endif %}
+                        {%- elif item.counterparty %}
+                        {{ bullet("user", item.counterparty.name) }}
+                        {%- elif item.is_load %}
+                        {{ bullet("plus-square", "Top-up") }}
+                        {%- endif %}
+                        {%- if item.decline_reason %}
+                        {{ bullet("minus-circle", "Declined") }}
+                        {%- endif %}
+                        {%- if item.notes %}
+                        {{ bullet("pencil-alt", item.notes) }}
+                        {%- endif %}
                     </ul>
                 </div>
             </div>
-            {% endfor %}
+            {%- endfor %}
         </div>
         <script src="/static/js/jquery-3.3.1.min.js"></script>
         <script src="/static/js/bootstrap.bundle.min.js"></script>

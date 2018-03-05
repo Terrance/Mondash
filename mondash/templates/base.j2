@@ -1,3 +1,7 @@
+{%- macro pretty(text) -%}
+{{- text.replace("_", " ") | capitalize -}}
+{%- endmacro -%}
+
 {%- macro currency(amount, decimal=true) -%}
 {%- if amount == amount | int and not decimal -%}
 {{- "%g" | format(amount) -}}
@@ -29,8 +33,7 @@
 {%- endmacro -%}
 
 {%- macro pot_item(pot) -%}
-<strong>{{ pot.name }}</strong>
-<br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
+<strong>{{ pot.name }}</strong><br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
 {%- endmacro -%}
 
 {%- macro bullet(icon, text) -%}
@@ -43,6 +46,44 @@
         <title>Mondash</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+        <style>
+            body {
+                margin-bottom: 1rem;
+            }
+            h2, h3 {
+                margin-top: 1rem;
+            }
+            h2 small {
+                float: right;
+                margin-left: 1rem;
+            }
+            table th:first-child, table td:first-child {
+                width: 100%;
+            }
+            table th:not(:first-child), table td:not(:first-child) {
+                white-space: nowrap;
+            }
+            table th:last-child, table td:last-child {
+                text-align: right;
+            }
+            .card {
+                margin-top: 0.5rem;
+                padding-top: 1rem;
+            }
+            .card-body {
+                padding: 0.25rem;
+            }
+            .card-body img {
+                float: right;
+                max-height: 4.5rem;
+                max-width: 4.5rem;
+                margin-right: 1rem;
+                border: 1px solid rgba(0, 0, 0, .125);
+            }
+            .faded {
+                opacity: 0.5;
+            }
+        </style>
     </head>
     <body>
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
@@ -78,16 +119,66 @@
                 </div>
             </div>
         </nav>
-        <div class="container py-3">
+        <div class="container">
             {%- set heading = namespace(month=none, date=none) %}
             {%- for item in items | reverse %}
             {%- if not heading.month == (item.created.month, item.created.year) %}
             {%- set heading.month = (item.created.month, item.created.year) %}
-            <h2 class="mt-2">{{ item.created.strftime("%B %Y") }}</h2>
+            <h2>
+                {{ item.created.strftime("%B %Y") }}
+                {%- if inbounds[heading.month] %}
+                <small class="text-success"><i class="fas fa-plus"></i> {{ currency(inbounds[heading.month] | abs) }}</small>
+                {%- endif %}
+                {%- if outbounds[heading.month] %}
+                <small class="text-danger"><i class="fas fa-minus"></i> {{ currency(outbounds[heading.month] | abs) }}</small>
+                {%- endif %}
+            </h2>
+            <div class="row">
+                <div class="col-sm-6">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th><i class="fa-fw fas fa-pound-sign"></i></th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {%- for category, amount in categories[heading.month].items() | sort if amount %}
+                            <tr>
+                                <td>{{ pretty(category.replace("mondo", "top-up")) }}</td>
+                                <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}"><i class="fa-fw fas fa-{% if amount > 0 %}plus{% else %}minus{% endif %}"></i></td>
+                                <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}">{{ currency(amount | abs) }}</td>
+                            </tr>
+                            {%- endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-sm-6">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Merchant</th>
+                                <th><i class="fa-fw fas fa-pound-sign"></i></th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {%- for merchant, amount in merchants[heading.month].items() | sort if amount %}
+                            <tr>
+                                <td>{% if merchant %}{{ merchant }}{% else %}<em>Unidentified</em>{% endif %}</td>
+                                <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}"><i class="fa-fw fas fa-{% if amount > 0 %}plus{% else %}minus{% endif %}"></i></td>
+                                <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}">{{ currency(amount | abs) }}</td>
+                            </tr>
+                            {%- endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             {%- endif %}
             {%- if not heading.date == item.created.date() %}
             {%- set heading.date = item.created.date() %}
-            <h3 class="mt-2">{{ item.created.strftime("%d/%m/%y") }}</h3>
+            <h3>{{ item.created.strftime("%d/%m/%y") }}</h3>
             {%- endif %}
             {%- if item.is_load or item.amount > 0 %}
             {%- set colour = "success" %}
@@ -100,17 +191,16 @@
             {%- else %}
             {%- set colour = "primary" %}
             {%- endif %}
-            <div class="card text-white bg-{{ colour }} mt-1"{% if item.id in dupes %} style="opacity: 0.5"{% endif %}>
-                <div class="card-body p-1">
-                    <h4 class="card-title"></h4>
+            <div class="card text-white bg-{{ colour }}{% if item.id in dupes %} faded{% endif %}">
+                <div class="card-body">
                     {%- if item.merchant and item.merchant.logo %}
-                    <img src="{{ item.merchant.logo }}" class="float-right mr-3" style="border: 1px solid rgba(0, 0, 0, .125); max-height: 4.5rem">
+                    <img src="{{ item.merchant.logo }}">
                     {%- endif %}
                     <ul class="fa-ul">
                         {{ bullet("clock", item.created.strftime("%H:%M:%S")) }}
-                        {%- set text = currency(item.amount) %}
+                        {%- set text = currency(item.amount | abs) %}
                         {%- if item.local_currency and not item.currency == item.local_currency %}
-                        {%- set text %}{{ text }} ({{ currency(item.local_amount, false) }} {{ item.local_currency }}){% endset %}
+                        {%- set text %}{{ text }} ({{ currency(item.local_amount | abs, false) }} {{ item.local_currency }}){% endset %}
                         {%- endif %}
                         {{ bullet("pound-sign", text) }}
                         {%- if item.merchant %}
@@ -124,7 +214,7 @@
                         {{ bullet("plus-square", "Top-up") }}
                         {%- endif %}
                         {%- if item.decline_reason %}
-                        {{ bullet("minus-circle", "Declined") }}
+                        {{ bullet("minus-circle", pretty(item.decline_reason)) }}
                         {%- endif %}
                         {%- if item.notes %}
                         {{ bullet("pencil-alt", item.notes) }}

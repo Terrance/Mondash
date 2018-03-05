@@ -85,23 +85,44 @@ async def base(request, api):
         tasks = (api.balance(id) for id in account_ids)
         balances = dict(zip(account_ids, await asyncio.gather(*tasks)))
         items = await api.transactions(*account_ids)
-    amounts = defaultdict(lambda: (0, 0))
+    inbounds = defaultdict(Decimal)
+    outbounds = defaultdict(Decimal)
+    categories = defaultdict(lambda: defaultdict(Decimal))
+    merchants = defaultdict(lambda: defaultdict(Decimal))
     matches = {}
     dupes = set()
     for item in items:
-        if item["amount"] == 0 or item.get("decline_reason") or not item["merchant"]:
+        if item["amount"] == 0 or item.get("decline_reason"):
             continue
+        month = (item["created"].month, item["created"].year)
+        merchant = None
+        if item["merchant"]:
+            merchant = item["merchant"]["name"]
+        elif item["counterparty"]:
+            merchant = item["counterparty"]["name"]
+        elif item["is_load"]:
+            merchant = "Top-up"
         amount = item["amount"]
-        if (item["merchant"]["name"], -amount) in matches:
-            dupes.add(item["id"])
-            dupes.add(matches.pop((item["merchant"]["name"], -amount)))
+        if amount > 0:
+            inbounds[month] += amount
         else:
-            matches[(item["merchant"]["name"], amount)] = item["id"]
+            outbounds[month] += amount
+        categories[month][item["category"]] += amount
+        merchants[month][merchant or ""] += amount
+        if (merchant, -amount) in matches:
+            dupes.add(item["id"])
+            dupes.add(matches.pop((merchant, -amount)))
+        else:
+            matches[(merchant, amount)] = item["id"]
     return {"accounts": accounts,
             "default": default,
             "pots": pots,
             "balances": balances,
             "items": items,
+            "inbounds": inbounds,
+            "outbounds": outbounds,
+            "categories": categories,
+            "merchants": merchants,
             "dupes": dupes}
 
 

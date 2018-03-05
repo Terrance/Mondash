@@ -103,7 +103,7 @@
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
             <div class="container">
                 <span class="navbar-brand">Mondash</span>
-                <li class="navbar-text">&pound;{{ currency(balances[default.id].spend_today) }} spent today</li>
+                <li class="navbar-text">&pound;{{ currency(balances[default.id].spend_today | abs) }} spent today</li>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#nav-content" aria-controls="nav-content" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -222,9 +222,7 @@
                             {%- else %}
                             <i class="fas fa-{{ category_icon(item.category) }}"></i>
                             {%- endif %}
-                            {%- if item.is_load %}
-                            <em>Account top-up</em>
-                            {%- elif item.merchant %}
+                            {%- if item.merchant %}
                             {%- if item.merchant.atm %}
                             <em>Cash withdrawal</em>
                             {%- elif item.merchant.name %}
@@ -232,6 +230,8 @@
                             {%- endif %}
                             {%- elif item.counterparty and item.counterparty.name %}
                             {{ item.counterparty.name }}
+                            {%- elif item.is_load %}
+                            <em>Account top-up</em>
                             {%- endif %}
                         </div>
                         {%- if item.amount %}

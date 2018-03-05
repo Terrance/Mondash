@@ -36,8 +36,18 @@
 <strong>{{ pot.name }}</strong><br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
 {%- endmacro -%}
 
-{%- macro bullet(icon, text) -%}
-<li><span class="fa-li"><i class="fas fa-{{ icon }}"></i></span> {{ text }}</li>
+{%- macro category_icon(category) -%}
+{{ {"mondo": "plus-square",
+    "general": "box",
+    "eating_out": "utensils",
+    "expenses": "briefcase",
+    "transport": "car",
+    "cash": "money-bill-alt",
+    "bills": "file-alt",
+    "entertainment": "smile",
+    "shopping": "shopping-bag",
+    "holidays": "plane",
+    "groceries": "shopping-basket"}[category] }}
 {%- endmacro -%}
 
 <!DOCTYPE html>
@@ -68,16 +78,20 @@
             }
             .card {
                 margin-top: 0.5rem;
-                padding-top: 1rem;
+            }
+            .card img, .card .svg-inline--fa {
+                margin-right: 0.25rem;
             }
             .card-body {
-                padding: 0.25rem;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
             }
-            .card-body img {
-                float: right;
-                max-height: 4.5rem;
-                max-width: 4.5rem;
-                margin-right: 1rem;
+            .card-body {
+                font-size: 1.5rem;
+            }
+            .card-body .row img {
+                height: 1.75rem;
+                vertical-align: sub;
                 border: 1px solid rgba(0, 0, 0, .125);
             }
             .faded {
@@ -192,35 +206,56 @@
             {%- set colour = "primary" %}
             {%- endif %}
             <div class="card text-white bg-{{ colour }}{% if item.id in dupes %} faded{% endif %}">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col"><i class="fas fa-clock"></i> {{ item.created.strftime("%H:%M:%S") }}</div>
+                        {%- if item.merchant.address %}
+                        <div class="col-sm-auto text-sm-right"><i class="fas fa-{% if item.merchant.online %}desktop{% else %}map-marker-alt{% endif %}"></i> {{ item.merchant.address.short_formatted }}</div>
+                        {%- endif %}
+                    </div>
+                </div>
                 <div class="card-body">
-                    {%- if item.merchant and item.merchant.logo %}
-                    <img src="{{ item.merchant.logo }}">
-                    {%- endif %}
-                    <ul class="fa-ul">
-                        {{ bullet("clock", item.created.strftime("%H:%M:%S")) }}
-                        {%- set text = currency(item.amount | abs) %}
-                        {%- if item.local_currency and not item.currency == item.local_currency %}
-                        {%- set text %}{{ text }} ({{ currency(item.local_amount | abs, false) }} {{ item.local_currency }}){% endset %}
+                    <div class="row">
+                        <div class="col">
+                            {%- if item.merchant and item.merchant.logo %}
+                            <img src="{{ item.merchant.logo }}">
+                            {%- else %}
+                            <i class="fas fa-{{ category_icon(item.category) }}"></i>
+                            {%- endif %}
+                            {%- if item.is_load %}
+                            <em>Account top-up</em>
+                            {%- elif item.merchant %}
+                            {%- if item.merchant.atm %}
+                            <em>Cash withdrawal</em>
+                            {%- elif item.merchant.name %}
+                            {{ item.merchant.name }}
+                            {%- endif %}
+                            {%- elif item.counterparty and item.counterparty.name %}
+                            {{ item.counterparty.name }}
+                            {%- endif %}
+                        </div>
+                        {%- if item.amount %}
+                        <div class="col-md-auto text-md-right">
+                            <small>&pound;</small>{{ currency(item.amount | abs) }}
+                            {%- if item.local_currency and not item.currency == item.local_currency %}
+                            ({{ currency(item.local_amount | abs, false) }} {{ item.local_currency }})
+                            {%- endif %}
+                        </div>
                         {%- endif %}
-                        {{ bullet("pound-sign", text) }}
-                        {%- if item.merchant %}
-                        {{ bullet("globe" if item.merchant.online else "user-secret", item.merchant.name) }}
-                        {%- if item.merchant.address and not item.merchant.online %}
-                        {{ bullet("map-marker-alt", item.merchant.address.formatted) }}
-                        {%- endif %}
-                        {%- elif item.counterparty %}
-                        {{ bullet("user", item.counterparty.name) }}
-                        {%- elif item.is_load %}
-                        {{ bullet("plus-square", "Top-up") }}
+                    </div>
+                </div>
+                {%- if item.notes or item.decline_reason %}
+                <div class="card-footer">
+                    <div class="row">
+                        {%- if item.notes %}
+                        <div class="col"><i class="fas fa-sticky-note"></i> {{ item.notes }}</div>
                         {%- endif %}
                         {%- if item.decline_reason %}
-                        {{ bullet("minus-circle", pretty(item.decline_reason)) }}
+                        <div class="col-sm-auto"><i class="fas fa-minus-circle"></i> {{ pretty(item.decline_reason) }}</div>
                         {%- endif %}
-                        {%- if item.notes %}
-                        {{ bullet("pencil-alt", item.notes) }}
-                        {%- endif %}
-                    </ul>
+                    </div>
                 </div>
+                {%- endif %}
             </div>
             {%- endfor %}
         </div>

@@ -100,7 +100,7 @@ class MonzoAPI:
         return await self("GET", "/accounts", "accounts")
 
     async def pots(self):
-        data = await self("GET", "/pots/listV1", "pots")
+        data = await self("GET", "/pots", "pots")
         for pot in data:
             pot["balance"] = currency(pot["balance"])
         return data

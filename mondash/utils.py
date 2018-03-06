@@ -34,10 +34,6 @@ def date_format(timestamp, format):
     return date.strftime(format)
 
 
-class NotAuthorisedError(Exception):
-    pass
-
-
 class MonzoAPI:
     """
     A thin asynchronous wrapper around Monzo's API.
@@ -62,8 +58,11 @@ class MonzoAPI:
         {"balance": 1234, ...}
     """
 
+    class NotAuthorisedError(Exception): pass
+
     def __init__(self, token=None):
         self._token = token
+        self._user = None
         self._sess = ClientSession()
 
     async def __call__(self, method, path, key=None, **kwargs):
@@ -98,7 +97,16 @@ class MonzoAPI:
                                 "redirect_uri": redirect_uri,
                                 "code": code})
         self._token = data["access_token"]
+        self._user = data["user_id"]
         return data
+
+    async def whoami(self):
+        return await self("GET", "/ping/whoami")
+
+    async def user(self):
+        if not self._user:
+            self._user = (await self.whoami())["user_id"]
+        return self._user
 
     async def accounts(self):
         return await self("GET", "/accounts", "accounts")
@@ -110,10 +118,11 @@ class MonzoAPI:
         return await self("GET", "/balance", params={"account_id": account_id})
 
     async def transactions(self, account_id, since=None):
-        return await self("GET", "/transactions", "transactions",
+        data = await self("GET", "/transactions", "transactions",
                           params={"account_id": account_id,
                                   "expand[]": "merchant",
                                   "since": since or ""})
+        return [item for item in data if not item["created"] == since]
 
 
 def session(fn):

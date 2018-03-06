@@ -16,13 +16,15 @@ import aiohttp_jinja2 as aiojinja
 import aiohttp_session as aiosession
 import jinja2
 
-from .utils import rand_str, currency, date_format, NotAuthorisedError, MonzoAPI, session
+from .utils import rand_str, currency, date_format, MonzoAPI, session
 
 
 AUTH_HOST = "https://auth.monzo.com"
 
 
 log = logging.getLogger(__name__)
+
+cache = {}
 
 
 def start_auth(request, sess):
@@ -47,8 +49,8 @@ def auth_redir(fn):
             return start_auth(request, sess)
         else:
             try:
-                return await fn(request, MonzoAPI(token))
-            except NotAuthorisedError:
+                return await fn(request, sess, MonzoAPI(token))
+            except MonzoAPI.NotAuthorisedError:
                 return start_auth(request, sess)
     return auth_redir_wrap
 
@@ -69,24 +71,47 @@ async def callback(request, sess):
     return web.HTTPFound("/")
 
 
-@session
-async def logout(request, sess):
+@auth_redir
+async def clear(request, sess, api):
+    user = await api.user()
+    if user in cache:
+        del cache[user]
+    return web.HTTPFound("/")
+
+@auth_redir
+async def logout(request, sess, api):
+    user = await api.user()
+    if user in cache:
+        del cache[user]
     del sess["token"]
     return web.HTTPFound("/")
 
 
 @aiojinja.template("base.j2")
 @auth_redir
-async def base(request, api):
+async def base(request, sess, api):
     async with api:
-        accounts, pots = await asyncio.gather(api.accounts(), api.pots())
+        user = await api.user()
+        if user in cache:
+            accounts = cache[user]["accounts"]
+            pots = cache[user]["pots"]
+        else:
+            accounts, pots = await asyncio.gather(api.accounts(), api.pots())
         account_ids = [account["id"] for account in accounts]
         default = next(account for account in accounts if not account["closed"])
         balance_data = await asyncio.gather(*(api.balance(id) for id in account_ids))
         balances = dict(zip(account_ids, balance_data))
-        item_data = await asyncio.gather(*(api.transactions(id) for id in account_ids))
-        items = list(chain(*item_data))
+        items = []
+        since = None
+        if user in cache:
+            items = cache[user]["items"]
+            since = items[-1]["created"]
+        item_data = await asyncio.gather(*(api.transactions(id, since) for id in account_ids))
+        items += list(chain(*item_data))
         items.sort(key=lambda item: item["created"])
+        cache[user] = {"accounts": accounts,
+                       "pots": pots,
+                       "items": items}
     inbounds = defaultdict(int)
     outbounds = defaultdict(int)
     categories = defaultdict(lambda: defaultdict(int))
@@ -142,6 +167,7 @@ def init_app(args=()):
     })
     aiosession.setup(app, storage=aiosession.SimpleCookieStorage())  # TODO
     app.router.add_get("/callback", callback, name="callback")
+    app.router.add_get("/clear", clear)
     app.router.add_get("/logout", logout)
     app.router.add_get("/", base)
     app.router.add_static("/static", os.path.join(os.path.dirname(__file__), "static"))

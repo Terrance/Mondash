@@ -8,7 +8,7 @@
 
 {%- macro category_icon(category) -%}
 {{ {"mondo": "plus-square",
-    "general": "box",
+    "general": "question-circle",
     "eating_out": "utensils",
     "expenses": "briefcase",
     "transport": "car",
@@ -202,6 +202,8 @@
                         <div class="col">
                             {%- if item.merchant and item.merchant.logo %}
                             <img src="{{ item.merchant.logo }}">
+                            {%- elif item.metadata and item.metadata.pot_id %}
+                            <i class="fas fa-gem"></i>
                             {%- else %}
                             <i class="fas fa-{{ category_icon(item.category) }}"></i>
                             {%- endif %}
@@ -213,6 +215,12 @@
                             {{ item.counterparty.name }}
                             {%- elif item.is_load %}
                             <em>Account top-up</em>
+                            {%- elif item.metadata and item.metadata.pot_id %}
+                            {%- for pot in pots %}
+                            {%- if pot.id == item.metadata.pot_id %}
+                            {{ pot.name }} <em>pot {% if item.amount > 0 %}withdrawal{% else %}top-up{% endif %}</em>
+                            {%- endif %}
+                            {%- endfor %}
                             {%- else %}
                             <em>Unidentified</em>
                             {%- endif %}

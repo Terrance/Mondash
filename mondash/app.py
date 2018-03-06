@@ -137,8 +137,11 @@ async def base(request, sess, api):
             dupes.add(matches.pop((merchant, -amount)))
         else:
             matches[(merchant, amount)] = item["id"]
-        if not merchant and item["is_load"]:
-            merchant = "Top-up"
+        if not merchant:
+            if item["is_load"]:
+                merchant = "Top-up"
+            elif item["metadata"] and "pot_id" in item["metadata"]:
+                merchant = "Pots"
         categories[month][item["category"]] += amount
         merchants[month][merchant or ""] += amount
     return {"accounts": accounts,

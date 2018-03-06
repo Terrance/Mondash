@@ -222,16 +222,16 @@
                             {%- else %}
                             <i class="fas fa-{{ category_icon(item.category) }}"></i>
                             {%- endif %}
-                            {%- if item.merchant %}
-                            {%- if item.merchant.atm %}
+                            {%- if item.merchant and item.merchant.atm %}
                             <em>Cash withdrawal</em>
-                            {%- elif item.merchant.name %}
+                            {%- elif item.merchant and item.merchant.name %}
                             {{ item.merchant.name }}
-                            {%- endif %}
                             {%- elif item.counterparty and item.counterparty.name %}
                             {{ item.counterparty.name }}
                             {%- elif item.is_load %}
                             <em>Account top-up</em>
+                            {%- else %}
+                            <em>Unidentified</em>
                             {%- endif %}
                         </div>
                         {%- if item.amount %}

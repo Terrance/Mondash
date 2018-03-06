@@ -100,20 +100,20 @@ async def base(request, api):
             merchant = item["merchant"]["name"]
         elif item["counterparty"]:
             merchant = item["counterparty"]["name"]
-        elif item["is_load"]:
-            merchant = "Top-up"
         amount = item["amount"]
         if amount > 0:
             inbounds[month] += amount
         else:
             outbounds[month] += amount
-        categories[month][item["category"]] += amount
-        merchants[month][merchant or ""] += amount
         if (merchant, -amount) in matches:
             dupes.add(item["id"])
             dupes.add(matches.pop((merchant, -amount)))
         else:
             matches[(merchant, amount)] = item["id"]
+        if not merchant and item["is_load"]:
+            merchant = "Top-up"
+        categories[month][item["category"]] += amount
+        merchants[month][merchant or ""] += amount
     return {"accounts": accounts,
             "default": default,
             "pots": pots,

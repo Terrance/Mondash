@@ -1,9 +1,17 @@
 {%- macro pretty(text) -%}
-{{- text.replace("_", " ") | capitalize -}}
+{{ text.replace("_", " ") | capitalize }}
 {%- endmacro -%}
 
 {%- macro sort_code(code) -%}
-{{- code[0:2] }}-{{ code[2:4] }}-{{ code[4:6] -}}
+{{ code[0:2] }}-{{ code[2:4] }}-{{ code[4:6] }}
+{%- endmacro -%}
+
+{%- macro twitter(username) -%}
+{{ username[(1 if username.startswith("@") else 0):] }}
+{%- endmacro -%}
+
+{%- macro map_url(address) -%}
+https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{ address.zoom_level }}z
 {%- endmacro -%}
 
 {%- macro category_icon(category) -%}
@@ -48,6 +56,9 @@
             }
             .card {
                 margin-top: 0.5rem;
+            }
+            .card a {
+                color: white;
             }
             .card img, .card .svg-inline--fa {
                 margin-right: 0.25rem;
@@ -191,9 +202,24 @@
             <div class="card text-white bg-{{ colour }}{% if item.id in dupes %} faded{% endif %}">
                 <div class="card-header">
                     <div class="row">
-                        <div class="col"><i class="fas fa-clock"></i> {{ date_format(item.created, "%H:%M:%S") }}</div>
+                        <div class="col">
+                            <span><i class="fas fa-clock"></i> {{ date_format(item.created, "%H:%M:%S") }}</span>
+                        </div>
+                        {%- if item.merchant and item.merchant.metadata.twitter_id %}
+                        <div class="col-sm-auto text-sm-right">
+                            <span>
+                                <i class="fab fa-twitter"></i>
+                                <a href="https://twitter.com/{{ twitter(item.merchant.metadata.twitter_id) }}" target="_blank">@{{ twitter(item.merchant.metadata.twitter_id) }}</a>
+                            </span>
+                        </div>
+                        {%- endif %}
                         {%- if item.merchant.address %}
-                        <div class="col-sm-auto text-sm-right"><i class="fas fa-{% if item.merchant.online %}desktop{% else %}map-marker-alt{% endif %}"></i> {{ item.merchant.address.short_formatted }}</div>
+                        <div class="col-sm-auto text-sm-right">
+                            <span>
+                                <i class="fas fa-{% if item.merchant.online %}desktop{% else %}map-marker-alt{% endif %}"></i>
+                                {% if item.merchant.address.latitude %}<a href="{{ map_url(item.merchant.address) }}" target="_blank">{% endif %}{{ item.merchant.address.short_formatted }}{% if item.merchant.address.latitude %}</a>{% endif %}
+                            </span>
+                        </div>
                         {%- endif %}
                     </div>
                 </div>

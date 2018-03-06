@@ -111,7 +111,7 @@
                     <ul class="navbar-nav ml-auto">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href id="btn-accounts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ account_label(default) }}</a>
-                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenu2">
+                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="btn-accounts">
                                 {%- for account in accounts %}
                                 <button class="dropdown-item" type="button"{% if account.closed %} disabled{% endif %}>
                                     {{ account_item(account) }}
@@ -160,7 +160,7 @@
                         <tbody>
                             {%- for category, amount in categories[heading.month].items() | sort if amount %}
                             <tr>
-                                <td>{{ pretty(category.replace("mondo", "top-up")) }}</td>
+                                <td><i class="fa-fw fas fa-{{ category_icon(category) }}"></i> {{ pretty(category.replace("mondo", "top-up")) }}</td>
                                 <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}"><i class="fa-fw fas fa-{% if amount > 0 %}plus{% else %}minus{% endif %}"></i></td>
                                 <td class="text-{% if amount > 0 %}success{% else %}danger{% endif %}">{{ currency(amount | abs) }}</td>
                             </tr>
@@ -238,7 +238,7 @@
                         <div class="col-md-auto text-md-right">
                             <small>&pound;</small>{{ currency(item.amount | abs) }}
                             {%- if item.local_currency and not item.currency == item.local_currency %}
-                            ({{ currency(item.local_amount | abs, false) }} {{ item.local_currency }})
+                            <small>({{ currency(item.local_amount | abs, false) }} {{ item.local_currency }})</small>
                             {%- endif %}
                         </div>
                         {%- endif %}

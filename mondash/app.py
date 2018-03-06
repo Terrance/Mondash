@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 from functools import wraps
+from itertools import chain
 import logging
 import os
 import sys
@@ -15,7 +16,7 @@ import aiohttp_jinja2 as aiojinja
 import aiohttp_session as aiosession
 import jinja2
 
-from .utils import rand_str, NotAuthorisedError, MonzoAPI, session
+from .utils import rand_str, currency, date_format, NotAuthorisedError, MonzoAPI, session
 
 
 AUTH_HOST = "https://auth.monzo.com"
@@ -63,7 +64,6 @@ async def callback(request, sess):
                               request.app["client_secret"],
                               "{}/callback".format(request.app["client_host"]),
                               code)
-    print(data)
     sess["token"] = data["access_token"]
     sess["expires"] = datetime.now().timestamp() + data["expires_in"]
     return web.HTTPFound("/")
@@ -82,19 +82,21 @@ async def base(request, api):
         accounts, pots = await asyncio.gather(api.accounts(), api.pots())
         account_ids = [account["id"] for account in accounts]
         default = next(account for account in accounts if not account["closed"])
-        tasks = (api.balance(id) for id in account_ids)
-        balances = dict(zip(account_ids, await asyncio.gather(*tasks)))
-        items = await api.transactions(*account_ids)
-    inbounds = defaultdict(Decimal)
-    outbounds = defaultdict(Decimal)
-    categories = defaultdict(lambda: defaultdict(Decimal))
-    merchants = defaultdict(lambda: defaultdict(Decimal))
+        balance_data = await asyncio.gather(*(api.balance(id) for id in account_ids))
+        balances = dict(zip(account_ids, balance_data))
+        item_data = await asyncio.gather(*(api.transactions(id) for id in account_ids))
+        items = list(chain(*item_data))
+        items.sort(key=lambda item: item["created"])
+    inbounds = defaultdict(int)
+    outbounds = defaultdict(int)
+    categories = defaultdict(lambda: defaultdict(int))
+    merchants = defaultdict(lambda: defaultdict(int))
     matches = {}
     dupes = set()
     for item in items:
         if item["amount"] == 0 or item.get("decline_reason"):
             continue
-        month = (item["created"].month, item["created"].year)
+        month = date_format(item["created"], "%Y-%m")
         merchant = None
         if item["merchant"]:
             merchant = item["merchant"]["name"]
@@ -132,8 +134,12 @@ def init_app(args=()):
     app["client_id"] = os.getenv("CLIENT_ID")
     app["client_secret"] = os.getenv("CLIENT_SECRET")
     app["client_host"] = os.getenv("CLIENT_HOST")
-    aiojinja.setup(app, loader=jinja2.FileSystemLoader(
+    env = aiojinja.setup(app, loader=jinja2.FileSystemLoader(
         os.path.join(os.path.dirname(__file__), "templates")))
+    env.globals.update({
+        "currency": currency,
+        "date_format": date_format
+    })
     aiosession.setup(app, storage=aiosession.SimpleCookieStorage())  # TODO
     app.router.add_get("/callback", callback, name="callback")
     app.router.add_get("/logout", logout)

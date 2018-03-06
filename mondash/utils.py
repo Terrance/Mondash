@@ -20,14 +20,18 @@ def rand_str():
     return "".join(choices(string.ascii_uppercase + string.digits, k=32))
 
 
-def currency(amount):
-    return Decimal(amount) / 100
+def currency(amount, decimal=True):
+    if amount % 100 == 0 and not decimal:
+        return str(amount / 100)
+    else:
+        return "{:.2f}".format(Decimal(amount) / 100)
 
-def date(timestamp):
+def date_format(timestamp, format):
     try:
-        return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        date = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
-        return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+        date = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+    return date.strftime(format)
 
 
 class NotAuthorisedError(Exception):
@@ -93,39 +97,23 @@ class MonzoAPI:
                                 "client_secret": client_secret,
                                 "redirect_uri": redirect_uri,
                                 "code": code})
-        self.token = data["access_token"]
+        self._token = data["access_token"]
         return data
 
     async def accounts(self):
         return await self("GET", "/accounts", "accounts")
 
     async def pots(self):
-        data = await self("GET", "/pots", "pots")
-        for pot in data:
-            pot["balance"] = currency(pot["balance"])
-        return data
+        return await self("GET", "/pots", "pots")
 
     async def balance(self, account_id):
-        data = await self("GET", "/balance", params={"account_id": account_id})
-        data["balance"] = currency(data["balance"])
-        data["spend_today"] = currency(data["spend_today"])
-        return data
+        return await self("GET", "/balance", params={"account_id": account_id})
 
-    async def transactions(self, *account_ids):
-        tasks = []
-        for account_id in account_ids:
-            tasks.append(self("GET", "/transactions", "transactions",
-                              params={"account_id": account_id,
-                                      "expand[]": "merchant"}))
-        data = [item for items in (await asyncio.gather(*tasks)) for item in items]
-        data.sort(key=lambda t: t["created"])
-        for item in data:
-            item["amount"] = currency(item["amount"])
-            item["local_amount"] = currency(item["local_amount"])
-            item["created"] = date(item["created"])
-            if item["merchant"]:
-                item["merchant"]["created"] = date(item["merchant"]["created"])
-        return data
+    async def transactions(self, account_id, since=None):
+        return await self("GET", "/transactions", "transactions",
+                          params={"account_id": account_id,
+                                  "expand[]": "merchant",
+                                  "since": since or ""})
 
 
 def session(fn):

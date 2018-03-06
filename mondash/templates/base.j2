@@ -2,38 +2,8 @@
 {{- text.replace("_", " ") | capitalize -}}
 {%- endmacro -%}
 
-{%- macro currency(amount, decimal=true) -%}
-{%- if amount == amount | int and not decimal -%}
-{{- "%g" | format(amount) -}}
-{%- else -%}
-{{- "%0.2f" | format(amount) -}}
-{%- endif -%}
-{%- endmacro -%}
-
 {%- macro sort_code(code) -%}
 {{- code[0:2] }}-{{ code[2:4] }}-{{ code[4:6] -}}
-{%- endmacro -%}
-
-{% macro account_label(account) -%}
-{%- set tag = "strike" if account.closed else "b" -%}
-<{{ tag }}>{{ account.description }}</{{ tag }}>
-{%- if account.id in balances -%}
-{{ " " }}(&pound;{{ currency(balances[account.id].balance) }})
-{%- endif -%}
-{%- endmacro -%}
-
-{%- macro account_item(account) -%}
-<strong>{{ account.description }}</strong> <code>{{ account.type }}</code>
-{%- if account.id in balances -%}
-<br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(balances[account.id].balance) }}
-{%- endif -%}
-{%- if account.account_number -%}
-<br><i class="fa-fw fas fa-globe"></i> {{ account.account_number }}, {{ sort_code(account.sort_code) }}
-{%- endif -%}
-{%- endmacro -%}
-
-{%- macro pot_item(pot) -%}
-<strong>{{ pot.name }}</strong><br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
 {%- endmacro -%}
 
 {%- macro category_icon(category) -%}
@@ -110,18 +80,28 @@
                 <div class="collapse navbar-collapse" id="nav-content">
                     <ul class="navbar-nav ml-auto">
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href id="btn-accounts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ account_label(default) }}</a>
+                            <a class="nav-link dropdown-toggle" href id="btn-accounts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                {%- set tag = "strike" if default.closed else "b" %}
+                                <{{ tag }}>{{ default.description }}</{{ tag }}>
+                                {%- if default.id in balances %} (&pound;{{ currency(balances[default.id].balance) }}){% endif %}
+                            </a>
                             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="btn-accounts">
                                 {%- for account in accounts %}
                                 <button class="dropdown-item" type="button"{% if account.closed %} disabled{% endif %}>
-                                    {{ account_item(account) }}
+                                    <strong>{{ account.description }}</strong> <code>{{ account.type }}</code>
+                                    {%- if account.id in balances -%}
+                                    <br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(balances[account.id].balance) }}
+                                    {%- endif -%}
+                                    {%- if account.account_number -%}
+                                    <br><i class="fa-fw fas fa-globe"></i> {{ account.account_number }}, {{ sort_code(account.sort_code) }}
+                                    {%- endif %}
                                 </button>
                                 {%- endfor %}
                                 {%- if pots %}
                                 <div class="dropdown-divider"></div>
                                 {%- for pot in pots %}
                                 <button class="dropdown-item" type="button"{% if pot.deleted %} disabled{% endif %}>
-                                    {{ pot_item(pot) }}
+                                    <strong>{{ pot.name }}</strong><br><i class="fa-fw fas fa-pound-sign"></i> {{ currency(pot.balance) }}
                                 </button>
                                 {%- endfor %}
                                 {%- endif %}
@@ -136,10 +116,11 @@
         <div class="container">
             {%- set heading = namespace(month=none, date=none) %}
             {%- for item in items | reverse %}
-            {%- if not heading.month == (item.created.month, item.created.year) %}
-            {%- set heading.month = (item.created.month, item.created.year) %}
-            <h2 id="{{ item.created.strftime("%Y-%m") }}">
-                {{ item.created.strftime("%B %Y") }}
+            {%- set month = date_format(item.created, "%Y-%m") %}
+            {%- if not heading.month == month %}
+            {%- set heading.month = month %}
+            <h2 id="{{ date_format(item.created, month) }}">
+                {{ date_format(item.created, "%B %Y") }}
                 {%- if inbounds[heading.month] %}
                 <small class="text-success"><i class="fas fa-plus"></i> {{ currency(inbounds[heading.month] | abs) }}</small>
                 {%- endif %}
@@ -190,9 +171,10 @@
                 </div>
             </div>
             {%- endif %}
-            {%- if not heading.date == item.created.date() %}
-            {%- set heading.date = item.created.date() %}
-            <h3 id="{{ item.created.strftime("%Y-%m-%d") }}">{{ item.created.strftime("%d/%m/%y") }}</h3>
+            {%- set date = date_format(item.created, "%Y-%m-%d") %}
+            {%- if not heading.date == date %}
+            {%- set heading.date = date %}
+            <h3 id="{{ date }}">{{ date_format(item.created, "%d/%m/%y") }}</h3>
             {%- endif %}
             {%- if item.is_load or item.amount > 0 %}
             {%- set colour = "success" %}
@@ -208,7 +190,7 @@
             <div class="card text-white bg-{{ colour }}{% if item.id in dupes %} faded{% endif %}">
                 <div class="card-header">
                     <div class="row">
-                        <div class="col"><i class="fas fa-clock"></i> {{ item.created.strftime("%H:%M:%S") }}</div>
+                        <div class="col"><i class="fas fa-clock"></i> {{ date_format(item.created, "%H:%M:%S") }}</div>
                         {%- if item.merchant.address %}
                         <div class="col-sm-auto text-sm-right"><i class="fas fa-{% if item.merchant.online %}desktop{% else %}map-marker-alt{% endif %}"></i> {{ item.merchant.address.short_formatted }}</div>
                         {%- endif %}

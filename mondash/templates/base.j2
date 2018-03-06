@@ -138,7 +138,7 @@
             {%- for item in items | reverse %}
             {%- if not heading.month == (item.created.month, item.created.year) %}
             {%- set heading.month = (item.created.month, item.created.year) %}
-            <h2>
+            <h2 id="{{ item.created.strftime("%Y-%m") }}">
                 {{ item.created.strftime("%B %Y") }}
                 {%- if inbounds[heading.month] %}
                 <small class="text-success"><i class="fas fa-plus"></i> {{ currency(inbounds[heading.month] | abs) }}</small>
@@ -192,7 +192,7 @@
             {%- endif %}
             {%- if not heading.date == item.created.date() %}
             {%- set heading.date = item.created.date() %}
-            <h3>{{ item.created.strftime("%d/%m/%y") }}</h3>
+            <h3 id="{{ item.created.strftime("%Y-%m-%d") }}">{{ item.created.strftime("%d/%m/%y") }}</h3>
             {%- endif %}
             {%- if item.is_load or item.amount > 0 %}
             {%- set colour = "success" %}

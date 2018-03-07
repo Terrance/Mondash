@@ -50,8 +50,6 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
             }
             table th:not(:first-child), table td:not(:first-child) {
                 white-space: nowrap;
-            }
-            table th:last-child, table td:last-child {
                 text-align: right;
             }
             .card {
@@ -67,7 +65,7 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                 padding-top: 0.5rem;
                 padding-bottom: 0.5rem;
             }
-            .card-body {
+            .card-body .row {
                 font-size: 1.5rem;
             }
             .card-body .row img {
@@ -117,6 +115,7 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                                 {%- endfor %}
                                 {%- endif %}
                                 <div class="dropdown-divider"></div>
+                                <button class="dropdown-item" type="button" data-toggle="collapse" data-target="#tbl-summary" aria-expanded="false" aria-controls="tbl-summary"><i class="fa-fw fas fa-chart-line"></i> Toggle summary</button>
                                 <a href="/clear" class="dropdown-item"><i class="fa-fw fas fa-sync"></i> Clear cache</a>
                                 <a href="/logout" class="dropdown-item"><i class="fa-fw fas fa-sign-out-alt"></i> Log out</a>
                             </div>
@@ -126,6 +125,38 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
             </div>
         </nav>
         <div class="container">
+            <div id="tbl-summary" class="collapse">
+                <h2>Account summary</h2>
+                <table class="table table-sm table-responsive-md">
+                {%- set options = ["mondo", "general", "eating_out", "expenses",
+                                   "transport", "cash", "bills", "entertainment",
+                                   "shopping", "holidays", "groceries"] %}
+                    <thead>
+                        <tr>
+                            <th></th>
+                            {%- for category in options %}
+                            <th title="{{ pretty(category.replace("mondo", "top-up")) }}"><i class="fas fa-{{ category_icon(category) }}"></i></th>
+                            {%- endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {%- for month, totals in categories | dictsort | reverse %}
+                        <tr>
+                            <td>{{ month }}</td>
+                            {%- for category in options %}
+                            {%- if totals[category] > 0 %}
+                            <td class="text-success">{{ currency(totals[category] | abs) }}</td>
+                            {%- elif totals[category] < 0 %}
+                            <td class="text-danger">{{ currency(totals[category] | abs) }}</td>
+                            {%- else %}
+                            <td></td>
+                            {%- endif %}
+                            {%- endfor %}
+                        </tr>
+                        {%- endfor %}
+                    </tbody>
+                </table>
+            </div>
             {%- set heading = namespace(month=none, date=none) %}
             {%- for item in items | reverse %}
             {%- set month = date_format(item.created, "%Y-%m") %}

@@ -62,13 +62,17 @@ async def callback(request, sess):
     if not state == sess["state"]:
         raise web.HTTPBadRequest
     async with MonzoAPI() as api:
-        data = await api.auth(request.app["client_id"],
-                              request.app["client_secret"],
-                              "{}/callback".format(request.app["client_host"]),
-                              code)
-    sess["token"] = data["access_token"]
-    sess["expires"] = datetime.now().timestamp() + data["expires_in"]
-    return web.HTTPFound("/")
+        try:
+            data = await api.auth(request.app["client_id"],
+                                  request.app["client_secret"],
+                                  "{}/callback".format(request.app["client_host"]),
+                                  code)
+        except MonzoAPI.NotAuthorisedError:
+            return start_auth(request, sess)
+        else:
+            sess["token"] = data["access_token"]
+            sess["expires"] = datetime.now().timestamp() + data["expires_in"]
+            return web.HTTPFound("/")
 
 
 @auth_redir

@@ -76,7 +76,7 @@ class MonzoAPI:
                 resp.raise_for_status()
             except ClientResponseError as e:
                 if e.code == 401:
-                    raise NotAuthorisedError
+                    raise MonzoAPI.NotAuthorisedError
                 raise
             data = await resp.json()
             return data[key] if key else data

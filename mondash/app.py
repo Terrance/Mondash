@@ -16,7 +16,7 @@ import aiohttp_jinja2 as aiojinja
 import aiohttp_session as aiosession
 import jinja2
 
-from .utils import rand_str, currency, date_format, MonzoAPI, session
+from .utils import rand_str, currency, date_format, url, MonzoAPI, session
 
 
 AUTH_HOST = "https://auth.monzo.com"
@@ -170,7 +170,8 @@ def init_app(args=()):
         os.path.join(os.path.dirname(__file__), "templates")))
     env.globals.update({
         "currency": currency,
-        "date_format": date_format
+        "date_format": date_format,
+        "url": url,
     })
     aiosession.setup(app, storage=aiosession.SimpleCookieStorage())  # TODO
     app.router.add_get("/callback", callback, name="callback")

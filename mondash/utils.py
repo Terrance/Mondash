@@ -5,6 +5,7 @@ from functools import wraps
 import logging
 from random import choices
 import string
+from urllib.parse import urlparse, urlunparse
 
 from aiohttp import ClientSession, ClientResponseError
 import aiohttp_session as aiosession
@@ -32,6 +33,23 @@ def date_format(timestamp, format):
     except ValueError:
         date = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
     return date.strftime(format)
+
+def url(text, display=False):
+    parsed = urlparse(text)
+    if display:
+        if parsed.netloc:
+            path = "{}/{}".format(parsed.netloc, parsed.path).replace("//", "/")
+            parsed = parsed._replace(netloc="", path=path)
+        while parsed.path.endswith("/"):
+            parsed = parsed._replace(path=parsed.path[:-1])
+        parsed = parsed._replace(scheme="", params="", query="", fragment="")
+    else:
+        if not parsed.scheme:
+            parsed = parsed._replace(scheme="http")
+        if parsed.path and not parsed.netloc:
+            parts = parsed.path.split("/", 1)
+            parsed = parsed._replace(netloc=parts.pop(0), path="/{}".format("/".join(parts)))
+    return urlunparse(parsed)
 
 
 class MonzoAPI:

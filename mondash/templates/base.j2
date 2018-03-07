@@ -205,13 +205,23 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                         <div class="col">
                             <span><i class="fas fa-clock"></i> {{ date_format(item.created, "%H:%M:%S") }}</span>
                         </div>
-                        {%- if item.merchant and item.merchant.metadata.twitter_id %}
+                        {%- if item.merchant %}
+                        {%- if item.merchant.metadata.twitter_id %}
                         <div class="col-sm-auto text-sm-right">
                             <span>
                                 <i class="fab fa-twitter"></i>
                                 <a href="https://twitter.com/{{ twitter(item.merchant.metadata.twitter_id) }}" target="_blank">@{{ twitter(item.merchant.metadata.twitter_id) }}</a>
                             </span>
                         </div>
+                        {%- endif %}
+                        {%- if item.merchant.metadata.website %}
+                        <div class="col-sm-auto text-sm-right">
+                            <span>
+                                <i class="fas fa-mouse-pointer"></i>
+                                <a href="{{ url(item.merchant.metadata.website) }}" target="_blank">{{ url(item.merchant.metadata.website, true) }}</a>
+                            </span>
+                        </div>
+                        {%- endif %}
                         {%- endif %}
                         {%- if item.merchant.address %}
                         <div class="col-sm-auto text-sm-right">

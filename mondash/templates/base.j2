@@ -199,11 +199,23 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
             {%- else %}
             {%- set colour = "primary" %}
             {%- endif %}
+            {%- if item.decline_reason %}
+            {%- set icon = "minus-circle" %}
+            {%- set status = "Declined: " + pretty(item.decline_reason) %}
+            {%- elif item.settled %}
+            {%- set icon = "check-circle" %}
+            {%- set status = "Settled: " + date_format(item.settled, "%d/%m/%y %H:%M:%S") %}
+            {%- elif item.amount -%}
+            {%- set icon = "hourglass-half" %}
+            {%- set status = "Authorised, pending settlement" %}
+            {%- else %}
+            {%- set icon = "circle" %}
+            {%- endif %}
             <div class="card text-white bg-{{ colour }}{% if item.id in dupes %} faded{% endif %}">
                 <div class="card-header">
                     <div class="row">
                         <div class="col">
-                            <span><i class="fas fa-clock"></i> {{ date_format(item.created, "%H:%M:%S") }}</span>
+                            <span title="{{ status }}"><i class="fas fa-{{ icon }}"></i> {{ date_format(item.created, "%H:%M:%S") }}</span>
                         </div>
                         {%- if item.merchant %}
                         {%- if item.merchant.metadata.twitter_id %}
@@ -225,7 +237,7 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                         {%- endif %}
                         {%- if item.merchant.address %}
                         <div class="col-sm-auto text-sm-right">
-                            <span>
+                            <span title="{{ item.merchant.address.formatted }}">
                                 <i class="fas fa-{% if item.merchant.online %}desktop{% else %}map-marker-alt{% endif %}"></i>
                                 {% if item.merchant.address.latitude %}<a href="{{ map_url(item.merchant.address) }}" target="_blank">{% endif %}{{ item.merchant.address.short_formatted }}{% if item.merchant.address.latitude %}</a>{% endif %}
                             </span>
@@ -236,13 +248,15 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
-                            {%- if item.merchant and item.merchant.logo %}
-                            <img src="{{ item.merchant.logo }}">
-                            {%- elif item.metadata and item.metadata.pot_id %}
-                            <i class="fas fa-gem"></i>
-                            {%- else %}
-                            <i class="fas fa-{{ category_icon(item.category) }}"></i>
-                            {%- endif %}
+                            <span title="{{ pretty(item.category.replace("mondo", "top-up")) }}">
+                                {%- if item.merchant and item.merchant.logo %}
+                                <img src="{{ item.merchant.logo }}">
+                                {%- elif item.metadata and item.metadata.pot_id %}
+                                <i class="fas fa-gem"></i>
+                                {%- else %}
+                                <i class="fas fa-{{ category_icon(item.category) }}"></i>
+                                {%- endif %}
+                            </span>
                             {%- if item.merchant and item.merchant.atm %}
                             <em>Cash withdrawal</em>
                             {%- elif item.merchant and item.merchant.name %}
@@ -271,15 +285,10 @@ https://www.google.co.uk/maps/@{{ address.latitude }},{{ address.longitude }},{{
                         {%- endif %}
                     </div>
                 </div>
-                {%- if item.notes or item.decline_reason %}
+                {%- if item.notes %}
                 <div class="card-footer">
                     <div class="row">
-                        {%- if item.notes %}
                         <div class="col"><i class="fas fa-sticky-note"></i> {{ item.notes }}</div>
-                        {%- endif %}
-                        {%- if item.decline_reason %}
-                        <div class="col-sm-auto"><i class="fas fa-minus-circle"></i> {{ pretty(item.decline_reason) }}</div>
-                        {%- endif %}
                     </div>
                 </div>
                 {%- endif %}

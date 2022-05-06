@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from decimal import Decimal
 from functools import wraps
@@ -130,7 +129,7 @@ class MonzoAPI:
         return await self("GET", "/accounts", "accounts")
 
     async def pots(self):
-        return await self("GET", "/pots", "pots")
+        return []  # No longer available.
 
     async def balance(self, account_id):
         return await self("GET", "/balance", params={"account_id": account_id})
